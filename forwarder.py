@@ -18,12 +18,12 @@ ALLOWED_CHATS = [
 STATE_FILE = "last_ids.json"
 
 async def main():
-    api_id = int(os.environ["TELEGRAM_API_ID"])
-    api_hash = os.environ["TELEGRAM_API_HASH"]
-    session_string = os.environ["TELEGRAM_SESSION"]
+    api_id = int(os.environ["TG_API_ID"])
+    api_hash = os.environ["TG_API_HASH"]
+    session_string = os.environ["TG_SESSION"]
     vk_token = os.environ["VK_TOKEN"]
     
-    # ID получателя в ВК (ваш личный ID)
+    # ID получателя в ВК
     vk_user_id = int(os.environ.get("VK_USER_ID", "0"))
 
     # Инициализация ВК
