@@ -1,6 +1,7 @@
 name: Telegram → VK Forwarder
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"   # каждые 5 минут
   workflow_dispatch:          # ручной запуск из интерфейса GitHub
