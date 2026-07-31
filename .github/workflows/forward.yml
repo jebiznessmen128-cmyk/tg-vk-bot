@@ -1,0 +1,45 @@
+name: Telegram → VK Forwarder
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # каждые 5 минут
+  workflow_dispatch:          # ручной запуск из интерфейса GitHub
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4        # принудительно завершаем до следующего запуска
+
+    steps:
+      - name: Получить код репозитория
+        uses: actions/checkout@v4
+
+      # Кэшируем last_ids.json между запусками
+      - name: Восстановить состояние (last_ids.json)
+        uses: actions/cache@v4
+        with:
+          path: last_ids.json
+          key: last-ids-${{ github.run_id }}
+          restore-keys: |
+            last-ids-
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+
+      - name: Запустить форвардер
+        env:
+          TG_API_ID:      ${{ secrets.TG_API_ID }}
+          TG_API_HASH:    ${{ secrets.TG_API_HASH }}
+          TG_SESSION:     ${{ secrets.TG_SESSION }}
+          VK_TOKEN:       ${{ secrets.VK_TOKEN }}
+          VK_USER_ID:     ${{ secrets.VK_USER_ID }}
+          VK_CHAT_ID:     ${{ secrets.VK_CHAT_ID }}
+          TG_SOURCES:     ${{ secrets.TG_SOURCES }}
+          MESSAGE_PREFIX: ${{ secrets.MESSAGE_PREFIX }}
+        run: python forwarder.py
