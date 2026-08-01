@@ -1,35 +1,11 @@
 import os
 import asyncio
-from threading import Thread
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from aiohttp import web
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 import vk_api
 
-# ==========================================
-# МИКРО-ВЕБ-СЕРВЕР ДЛЯ ЗАЩИТЫ ОТ СНА (RENDER)
-# ==========================================
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b"Bot is alive!")
-
-    def log_message(self, format, *args):
-        return
-
-def run_health_check_server():
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
-    server.serve_forever()
-
-Thread(target=run_health_check_server, daemon=True).start()
-
-# ==========================================
-# ОСНОВНОЙ КОД БОТА
-# ==========================================
-
+# 1. СПИСОК ЧАТОВ ДЛЯ ПЕРЕСЫЛКИ
 ALLOWED_CHATS = [
     "ProstoKhusan",
     "fkmfkb",
@@ -37,6 +13,7 @@ ALLOWED_CHATS = [
     "idbot"
 ]
 
+# 2. Переменные окружения
 api_id = int(os.environ["TG_API_ID"])
 api_hash = os.environ["TG_API_HASH"]
 session_string = os.environ["TG_SESSION"]
@@ -44,25 +21,27 @@ session_string = os.environ["TG_SESSION"]
 vk_token = os.environ["VK_TOKEN"]
 vk_user_id = int(os.environ["VK_USER_ID"])
 
+# Инициализация VK и Telegram
 vk_session = vk_api.VkApi(token=vk_token)
 vk = vk_session.get_api()
-
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 
-# Множество для хранения ID последних обработанных сообщений (защита от дублей)
+# Множество для защиты от дублей
 processed_msg_ids = set()
+
+# Веб-обработчик для Render / UptimeRobot
+async def handle_ping(request):
+    return web.Response(text="Bot is alive!")
 
 @client.on(events.NewMessage(chats=ALLOWED_CHATS))
 async def handler(event):
     if event.out:
         return
 
-    # Защита от дублей: если такое сообщение (сочетание чата и ID) уже обрабатывалось — пропускаем
     msg_key = (event.chat_id, event.id)
     if msg_key in processed_msg_ids:
         return
     
-    # Добавляем в обработанные и храним только последние 100 сообщений
     processed_msg_ids.add(msg_key)
     if len(processed_msg_ids) > 100:
         processed_msg_ids.pop()
@@ -83,12 +62,21 @@ async def handler(event):
     except Exception as e:
         print(f"Ошибка отправки в ВК: {e}")
 
-
 async def main():
+    # Запускаем веб-сервер aiohttp
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+
+    # Запускаем Telegram-бота
     await client.start()
     print("Бот успешно запущен и слушает сообщения 24/7...")
     await client.run_until_disconnected()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
