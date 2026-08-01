@@ -1,8 +1,36 @@
 import os
 import asyncio
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 import vk_api
+
+# ==========================================
+# МИКРО-ВЕБ-СЕРВЕР ДЛЯ ЗАЩИТЫ ОТ СНА (RENDER)
+# ==========================================
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+    # Отключаем лишние логи сервера в консоли
+    def log_message(self, format, *args):
+        return
+
+def run_health_check_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    server.serve_forever()
+
+# Запускаем веб-сервер в отдельном фоновом потоке
+Thread(target=run_health_check_server, daemon=True).start()
+
+# ==========================================
+# ОСНОВНОЙ КОД БОТА
+# ==========================================
 
 # 1. СПИСОК ЧАТОВ ДЛЯ ПЕРЕСЫЛКИ
 ALLOWED_CHATS = [
@@ -53,7 +81,7 @@ async def handler(event):
 
 async def main():
     await client.start()
-    print("Бот успешно запущен и слушаeт сообщения 24/7...")
+    print("Бот успешно запущен и слушает сообщения 24/7...")
     await client.run_until_disconnected()
 
 
