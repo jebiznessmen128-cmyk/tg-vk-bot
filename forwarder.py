@@ -16,7 +16,6 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Bot is alive!")
 
-    # Отключаем лишние логи сервера в консоли
     def log_message(self, format, *args):
         return
 
@@ -25,14 +24,12 @@ def run_health_check_server():
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     server.serve_forever()
 
-# Запускаем веб-сервер в отдельном фоновом потоке
 Thread(target=run_health_check_server, daemon=True).start()
 
 # ==========================================
 # ОСНОВНОЙ КОД БОТА
 # ==========================================
 
-# 1. СПИСОК ЧАТОВ ДЛЯ ПЕРЕСЫЛКИ
 ALLOWED_CHATS = [
     "ProstoKhusan",
     "fkmfkb",
@@ -40,7 +37,6 @@ ALLOWED_CHATS = [
     "idbot"
 ]
 
-# 2. Переменные окружения
 api_id = int(os.environ["TG_API_ID"])
 api_hash = os.environ["TG_API_HASH"]
 session_string = os.environ["TG_SESSION"]
@@ -48,19 +44,28 @@ session_string = os.environ["TG_SESSION"]
 vk_token = os.environ["VK_TOKEN"]
 vk_user_id = int(os.environ["VK_USER_ID"])
 
-# Инициализация VK
 vk_session = vk_api.VkApi(token=vk_token)
 vk = vk_session.get_api()
 
-# Инициализация Telegram
 client = TelegramClient(StringSession(session_string), api_id, api_hash)
 
+# Множество для хранения ID последних обработанных сообщений (защита от дублей)
+processed_msg_ids = set()
 
 @client.on(events.NewMessage(chats=ALLOWED_CHATS))
 async def handler(event):
-    # Пропускаем исходящие сообщения (от самого себя)
     if event.out:
         return
+
+    # Защита от дублей: если такое сообщение (сочетание чата и ID) уже обрабатывалось — пропускаем
+    msg_key = (event.chat_id, event.id)
+    if msg_key in processed_msg_ids:
+        return
+    
+    # Добавляем в обработанные и храним только последние 100 сообщений
+    processed_msg_ids.add(msg_key)
+    if len(processed_msg_ids) > 100:
+        processed_msg_ids.pop()
 
     sender = await event.get_sender()
     chat = await event.get_chat()
