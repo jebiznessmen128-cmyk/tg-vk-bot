@@ -35,7 +35,7 @@ jobs:
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
-          TG_SESSION_STRING: ${{ secrets.TG_SESSION_STRING }}
+          TG_SESSION: ${{ secrets.TG_SESSION }}
           VK_TOKEN: ${{ secrets.VK_TOKEN }}
           VK_USER_ID: ${{ secrets.VK_USER_ID }}
           SOURCE_CHATS: ${{ secrets.SOURCE_CHATS }}
