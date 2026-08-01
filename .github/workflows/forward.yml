@@ -8,18 +8,11 @@ on:
 jobs:
   forward:
     runs-on: ubuntu-latest
+    permissions: write-all
 
     steps:
       - name: Получить код репозитория
         uses: actions/checkout@v4
-
-      - name: Восстановить состояние (last_ids.json)
-        uses: actions/cache@v4
-        with:
-          path: last_ids.json
-          key: last-ids-${{ github.run_id }}
-          restore-keys: |
-            last-ids-
 
       - name: Установить Python
         uses: actions/setup-python@v5
@@ -40,3 +33,11 @@ jobs:
           VK_USER_ID: ${{ secrets.VK_USER_ID }}
           SOURCE_CHATS: ${{ secrets.SOURCE_CHATS }}
         run: python forwarder.py
+
+      - name: Сохранить состояние
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add last_ids.json
+          git commit -m "Update last_ids.json" || exit 0
+          git push
